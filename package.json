@@ -1,0 +1,15 @@
+{
+  "name": "ubimqtt",
+  "version": "1.0.0",
+  "description": "A mqtt convenience library for accessing the Ubikampus mqtt bus",
+  "main": "index.js",
+  "scripts": {
+    "test": "node_modules/jasmine/bin/jasmine.js"
+  },
+  "author": "Petri Savolainen",
+  "license": "MIT",
+  "dependencies": {
+    "jasmine": "^3.3.1",
+    "mqtt": "^2.18.8"
+  }
+}
