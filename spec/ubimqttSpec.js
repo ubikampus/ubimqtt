@@ -20,10 +20,12 @@ if (!global.reporterAdded)
 describe("UbiMqtt", function()
 	{
 	var  UbiMqtt = null;
+	var fs = null;
 
 	if (typeof(exports) !== "undefined")
 		{
 		UbiMqtt = require("../src/ubimqtt.js");
+		fs = require("fs");
 		}
 	else
 		{
@@ -47,7 +49,7 @@ describe("UbiMqtt", function()
 			});
 		});
 
-	it ("connects subscribes and publishes a message", function(done)
+	it ("connects, subscribes and publishes a message", function(done)
 		{
 		let mqtt = new UbiMqtt("mqtt://localhost:1883");
 
@@ -68,6 +70,37 @@ describe("UbiMqtt", function()
 				{
 				expect(err).toBeFalsy();
 				mqtt.publish("test/test","viestijee", function(err)
+					{
+					expect(err).toBeFalsy();
+					});
+				});
+			});
+		});
+
+	it ("subscribes, publishes a signed message, then verifies the signature", function(done)
+		{
+		const homedir = require('os').homedir();
+		var privateKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+		var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+		var mqtt = new UbiMqtt("mqtt://localhost:1883");
+
+		mqtt.connect(function(error)
+			{
+			expect(error).toBeFalsy();
+
+			var onMessage = function(topic, message)
+				{
+				logger.log("message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+				mqtt.disconnect(function(err)
+					{
+					expect(err).toBeFalsy();
+					done();
+					});
+				};
+			mqtt.subscribeSigned("test/test", publicKey, this, onMessage, function(err)
+				{
+				expect(err).toBeFalsy();
+				mqtt.publishSigned("test/test", "viestijee", privateKey, function(err)
 					{
 					expect(err).toBeFalsy();
 					});
