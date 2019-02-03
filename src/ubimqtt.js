@@ -46,7 +46,7 @@ var handleIncomingMessage = function(topic, message)
 				.then(function(result)
 					{
           console.log("verification succeeded");
-					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, message);
+					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload);
 					})
 				.catch(function(reason)
 					{
