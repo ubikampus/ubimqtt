@@ -2,20 +2,26 @@ function UbiMqtt(serverAddress)
 {
 var self = this;
 
+const PUBLISHERS_PREFIX = "publishers/";
+
+var listenerCounter = 0;
+
 var mqtt = require("mqtt");
 var jose = require("node-jose");
+var PublicKeyChangeListener = require("./publickeychangelistener")
 
 var client  = null;
 
-// {topic: [{listener: xx, obj: yy, publicKey:zz }, ...] }
+// {topic: { {listenerId: a, listener: xx, obj: yy, publicKey:zz }, ..} }
 var subscriptions = new Object();
+var publicKeyChangeListeners = new Array();
 
 var handleIncomingMessage = function(topic, message)
 	{
 	if (!subscriptions.hasOwnProperty(topic))
 		return;
 
-	for (let i = 0; i < subscriptions[topic].length; i++)
+	for (let i in subscriptions[topic])
 		{
 		if (subscriptions[topic][i].publicKey)
 			{
@@ -46,7 +52,7 @@ var handleIncomingMessage = function(topic, message)
 				.then(function(result)
 					{
           console.log("verification succeeded");
-					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload);
+					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload, i);
 					})
 				.catch(function(reason)
 					{
@@ -55,7 +61,7 @@ var handleIncomingMessage = function(topic, message)
 				});
 			}
 		else
-			subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, message);
+			subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, message, i);
 		}
 	};
 
@@ -92,11 +98,11 @@ self.disconnect = function(callback)
 		}
 	};
 
-self.publish = function(topic, message, callback)
+self.publish = function(topic, message, opts, callback)
 	{
 	if (client)
 		{
-		client.publish(topic, message, null, callback);
+		client.publish(topic, message, opts, callback);
 		}
 	else
 		{
@@ -104,7 +110,7 @@ self.publish = function(topic, message, callback)
 		}
 	};
 
-self.publishSigned = function(topic, message, privateKey, callback)
+self.publishSigned = function(topic, message, opts, privateKey, callback)
 		{
 		console.log("privateKey: "+privateKey);
 
@@ -121,7 +127,7 @@ self.publishSigned = function(topic, message, privateKey, callback)
 				result.payload = jose.util.base64url.decode(result.payload).toString();
 				console.log("jose produced: "+JSON.stringify(result));
 
-				self.publish(topic, JSON.stringify(result), callback);
+				self.publish(topic, JSON.stringify(result), opts, callback);
 				});
       });
 		};
@@ -130,22 +136,58 @@ self.subscribe = function(topic, obj, listener, callback)
 	{
 	//if publicKey is given, only let events with correct public key through
 	if (!subscriptions.hasOwnProperty(topic))
-		subscriptions[topic] = new Array();
+		subscriptions[topic] = new Object();
 
-	subscriptions[topic].push({listener: listener, obj: obj});
+	listenerId = listenerCounter+"";
+	listenerCounter++;
 
-	client.subscribe(topic, null, callback);
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj};
+
+	client.subscribe(topic, null, function(err)
+		{
+		callback(err, listenerId);
+		});
 	};
+
 
 self.subscribeSigned = function(topic, publicKey, obj, listener, callback)
 	{
 	//if publicKey is given, only let events with correct public key through
 	if (!subscriptions.hasOwnProperty(topic))
-		subscriptions[topic] = new Array();
+		subscriptions[topic] = new Object();
 
-	subscriptions[topic].push({listener: listener, obj: obj, publicKey: publicKey});
+	listenerId = listenerCounter+"";
+	listenerCounter++;
 
-	client.subscribe(topic, null, callback);
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, publicKey: publicKey};
+
+	client.subscribe(topic, null, function(err)
+		{
+		callback(err, listenerId);
+		});
+	};
+
+self.updatePublicKey = function(topic, listenerId, key)
+	{
+	if (subscriptions.hasOwnProperty(topic) && subscriptions[topic].hasOwnProperty(listenerId))
+		{
+		subscriptions[topic][listenerId].publicKey = key;
+		console.log("UbiMqtt::updatePublicKey() updated public key for topic: "+topic+" and listenerId: "+listenerId);
+		}
+	};
+
+self.subscribeFromPublisher = function(topic, publisherName, obj, listener, callback)
+	{
+	let publicKeyChangeListener = new PublicKeyChangeListener(self, topic, obj, listener, callback);
+	publicKeyChangeListeners.push(publicKeyChangeListener);
+
+	//subscribe to the public key of the publisher
+	let publicKeyTopic = PUBLISHERS_PREFIX + publisherName + "/publicKey";
+	self.subscribe(publicKeyTopic, publicKeyChangeListener, publicKeyChangeListener.onPublicKeyChanged, function(err, listenerId)
+ 		{
+		if (err)
+			return callback(err);
+		});
 	};
 }
 

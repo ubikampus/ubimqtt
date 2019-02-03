@@ -69,7 +69,7 @@ describe("UbiMqtt", function()
 			mqtt.subscribe("test/test", this, onMessage, function(err)
 				{
 				expect(err).toBeFalsy();
-				mqtt.publish("test/test","viestijee", function(err)
+				mqtt.publish("test/test", "viestijee", null, function(err)
 					{
 					expect(err).toBeFalsy();
 					});
@@ -81,7 +81,7 @@ describe("UbiMqtt", function()
 		{
 		const homedir = require('os').homedir();
 		var privateKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
-		var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+		var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key-public.pem");
 		var mqtt = new UbiMqtt("mqtt://localhost:1883");
 
 		mqtt.connect(function(error)
@@ -100,9 +100,103 @@ describe("UbiMqtt", function()
 			mqtt.subscribeSigned("test/test", publicKey, this, onMessage, function(err)
 				{
 				expect(err).toBeFalsy();
-				mqtt.publishSigned("test/test", "viestijee", privateKey, function(err)
+				mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
 					{
 					expect(err).toBeFalsy();
+					});
+				});
+			});
+		});
+
+	it ("subscribes from a known publisher", function(done)
+		{
+		const homedir = require('os').homedir();
+		var privateKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+		var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key-public.pem");
+		var mqtt = new UbiMqtt("mqtt://localhost:1883");
+
+		mqtt.connect(function(error)
+			{
+			expect(error).toBeFalsy();
+
+			//publish the public key for the "known publisher"
+			mqtt.publish("publishers/testpublisher/publicKey", publicKey, {retain: true}, function(err)
+				{
+				expect(err).toBeFalsy();
+				});
+
+			var onMessage = function(topic, message)
+				{
+				logger.log("Jsmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+				//clear the public key for the "known publisher"
+				mqtt.publish("publishers/testpublisher/publicKey", "", {retain: true}, function(err)
+					{
+					expect(err).toBeFalsy();
+					mqtt.disconnect(function(err)
+						{
+						expect(err).toBeFalsy();
+						done();
+						});
+					});
+				};
+
+			mqtt.subscribeFromPublisher("test/test", "testpublisher", this, onMessage, function(err)
+				{
+				expect(err).toBeFalsy();
+				console.log("PRIVATE KEY WHEN PUBLISHING SIGNED: "+privateKey);
+				mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
+					{
+					expect(err).toBeFalsy();
+					});
+				});
+			});
+		});
+
+	it ("subscribes from a known publisher who changes keys", function(done)
+		{
+		const homedir = require('os').homedir();
+		var privateKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+		var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key-public.pem");
+		var mqtt = new UbiMqtt("mqtt://localhost:1883");
+
+		mqtt.connect(function(error)
+			{
+			expect(error).toBeFalsy();
+
+			//publish the public key for the "known publisher"
+			mqtt.publish("publishers/testpublisher/publicKey", "fakekey", {retain: true}, function(err)
+				{
+				expect(err).toBeFalsy();
+				});
+
+			var onMessage = function(topic, message)
+				{
+				logger.log("Jsmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+				//clear the public key for the "known publisher"
+				mqtt.publish("publishers/testpublisher/publicKey", "", {retain: true}, function(err)
+					{
+					expect(err).toBeFalsy();
+					mqtt.disconnect(function(err)
+						{
+						expect(err).toBeFalsy();
+						done();
+						});
+					});
+				};
+
+			mqtt.subscribeFromPublisher("test/test", "testpublisher", this, onMessage, function(err)
+				{
+				expect(err).toBeFalsy();
+
+				//change publisher key
+				mqtt.publish("publishers/testpublisher/publicKey", publicKey, {retain: true}, function(err)
+					{
+					expect(err).toBeFalsy();
+					
+					mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
+						{
+						expect(err).toBeFalsy();
+						});
 					});
 				});
 			});
