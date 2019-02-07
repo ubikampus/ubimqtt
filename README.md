@@ -1,7 +1,10 @@
 # ubimqtt
 
-Mqtt conviency library for using the Ubikampus Mqtt bus
+Mqtt conveniecy library for using the Ubikampus Mqtt bus
 
-## API
+Api documentation
+-----------------
 
-### Table of contents
+To generate documentation in ./apidocs, execute:
+
+npm run jsdoc

@@ -5,17 +5,16 @@
   "main": "index.js",
   "scripts": {
     "test": "node_modules/jasmine/bin/jasmine.js",
-		"jsdoc": "jsdoc-md -s ./src/ubimqtt.js -m ./README.md"
+    "jsdoc": "jsdoc -d ./apidocs ./src/ubimqtt.js"
   },
   "author": "Petri Savolainen",
   "license": "MIT",
   "dependencies": {
     "jasmine": "^3.3.1",
-    "jsdoc-to-markdown": "^4.0.1",
     "mqtt": "^2.18.8",
     "node-jose": "^1.1.1"
   },
   "devDependencies": {
-    "jsdoc-md": "^1.7.1"
+    "jsdoc": "^3.5.5"
   }
 }

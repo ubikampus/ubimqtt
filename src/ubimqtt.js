@@ -1,5 +1,7 @@
 /**
 * Class for signed Mqtt communications at Ubikampus
+*
+* @constructor
 * @param {string} serverAddress the Mqtt server to cennect to
 */
 
@@ -72,7 +74,10 @@ var handleIncomingMessage = function(topic, message)
 
 /**
 * Connecs to the Mqtt server the address of which was given as a constructor parameter
-* @param callback the callback to call upon connection or error
+*
+* @function connect
+* @memberOf UbiMqtt#
+* @param {function} callback the callback to call upon connection or error
 */
 
 self.connect = function(callback)
@@ -94,8 +99,12 @@ self.connect = function(callback)
 
 /**
 * Disconnects from the Mqtt server
-* @param callback the callback to call upon successful disconnection or error
+*
+* @function disconnect
+* @memberOf UbiMqtt#
+* @param {function} callback the callback to call upon successful disconnection or error
 */
+
 self.disconnect = function(callback)
 	{
 	if (client)
@@ -114,10 +123,13 @@ self.disconnect = function(callback)
 
 /**
 * Publishes a message on the connected Mqtt server
+*
+* @function publish
+* @memberOf UbiMqtt#
 * @param {string} topic the Mqtt topic to publish to
 * @param {any} message the message to publish
 * @param {object} opts the options to pass to node-mqtt
-* @param callback the callback to call upon success or error
+* @param {function} callback the callback to call upon success or error
 */
 
 self.publish = function(topic, message, opts, callback)
@@ -132,14 +144,17 @@ self.publish = function(topic, message, opts, callback)
 		}
 	};
 
-	/**
-	* Publishes a signed message on the connected Mqtt server
-	* @param {string} topic the Mqtt topic to publish to
-	* @param {any} message the message to publish
-	* @param {object} opts the options to pass to node-mqtt
-	* @param {string} privateKey the private key in .pem format to sign the message with
-	* @param callback the callback to call upon success or error
-	*/
+/**
+*
+* Publishes a signed message on the connected Mqtt server
+* @function publishSigned
+* @memberOf UbiMqtt#
+* @param {string} topic the Mqtt topic to publish to
+* @param {any} message the message to publish
+* @param {object} opts the options to pass to node-mqtt
+* @param {string} privateKey the private key in .pem format to sign the message with
+* @param {function} callback the callback to call upon success or error
+*/
 
 self.publishSigned = function(topic, message, opts, privateKey, callback)
 		{
@@ -165,6 +180,9 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 
 /**
 * Subscribes to a Mqtt topic on the connected Mqtt server
+*
+* @function subscribe
+* @memberOf UbiMqtt#
 * @param {string} topic the Mqtt topic to subscribe to
 * @param {any} obj the value of "this" to be used whan calling the listener
 * @param {function} listener the listener function to call whenever a message matching the topic arrives
@@ -188,14 +206,17 @@ self.subscribe = function(topic, obj, listener, callback)
 		});
 	};
 
-	/**
-	* Subscribes to messages signed by particular keypair on a Mqtt topic on the connected Mqtt server
-	* @param {string} topic the Mqtt topic to subscribe to
-	* @param {string} publicKey the public key of the keypair the messages need to to be signed with. Only messages signed with this keypair will invoke the listener
-	* @param {any} obj the value of "this" to be used whan calling the listener
-	* @param {function} listener the listener function to call whenever a message matching the topic and signed with the publicKey arrives
-	* @param {function} callback the callback to be called upon successful subscription or error
-	*/
+/**
+* Subscribes to messages signed by particular keypair on a Mqtt topic on the connected Mqtt server
+*
+* @function subscribeSigned
+* @memberOf UbiMqtt#
+* @param {string} topic the Mqtt topic to subscribe to
+* @param {string} publicKey the public key of the keypair the messages need to to be signed with. Only messages signed with this keypair will invoke the listener
+* @param {any} obj the value of "this" to be used whan calling the listener
+* @param {function} listener the listener function to call whenever a message matching the topic and signed with the publicKey arrives
+* @param {function} callback the callback to be called upon successful subscription or error
+*/
 
 self.subscribeSigned = function(topic, publicKey, obj, listener, callback)
 	{
@@ -229,6 +250,8 @@ self.updatePublicKey = function(topic, listenerId, key)
 * The public key of the publisher is fetched from the Mqtt topic publishers/publishername/publicKey
 * and kept up-to-date with the help of a regular Mqtt subscription
 *
+* @function subscribeFromPublisher
+* @memberOf UbiMqtt#
 * @param {string} topic the Mqtt topic to subscribe to
 * @param {string} publiserName the name of the known publisher
 * @param {any} obj the value of "this" to be used whan calling the listener
