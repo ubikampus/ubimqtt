@@ -9,12 +9,15 @@ function UbiMqtt(serverAddress)
 {
 var self = this;
 
+var logger = console;
+
 const PUBLISHERS_PREFIX = "publishers/";
 
 var listenerCounter = 0;
 
 var mqtt = require("mqtt");
 var jose = require("node-jose");
+
 var PublicKeyChangeListener = require("./publickeychangelistener")
 
 var client  = null;
@@ -42,10 +45,10 @@ var handleIncomingMessage = function(topic, message)
 				}
 			catch (e)
 				{
-				console.log("Message was not in JSON format");
+				logger.log("UbiMqtt::handleIncomingMessage() Message was not in JSON format");
 				continue;
 				}
-			console.log("raw message at receiving end: "+message);
+			logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end: "+message);
 
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
 
@@ -58,12 +61,12 @@ var handleIncomingMessage = function(topic, message)
 				.verify(parsedMessage)
 				.then(function(result)
 					{
-          console.log("verification succeeded");
+          logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
 					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload, i);
 					})
 				.catch(function(reason)
 					{
-					console.log("verification failed: "+reason);
+					logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
 					});
 				});
 			}
@@ -84,9 +87,8 @@ self.connect = function(callback)
 	{
 	let tempClient = mqtt.connect(serverAddress);
 
-	tempClient.on("connect", function ()
+	tempClient.on("connect", function()
 		{
-		console.log("tempClient.on connect");
 		client = tempClient;
   	callback(null);
     });
@@ -158,8 +160,6 @@ self.publish = function(topic, message, opts, callback)
 
 self.publishSigned = function(topic, message, opts, privateKey, callback)
 		{
-		console.log("privateKey: "+privateKey);
-
 		jose.JWK.asKey(privateKey, "pem")
 		.then(function(key)
 			{
@@ -171,8 +171,7 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 				// {result} is a JSON object -- JWS using the JSON General Serialization
 				// make the payload human-readable
 				result.payload = jose.util.base64url.decode(result.payload).toString();
-				console.log("jose produced: "+JSON.stringify(result));
-
+				
 				self.publish(topic, JSON.stringify(result), opts, callback);
 				});
       });
@@ -240,7 +239,7 @@ self.updatePublicKey = function(topic, listenerId, key)
 	if (subscriptions.hasOwnProperty(topic) && subscriptions[topic].hasOwnProperty(listenerId))
 		{
 		subscriptions[topic][listenerId].publicKey = key;
-		console.log("UbiMqtt::updatePublicKey() updated public key for topic: "+topic+" and listenerId: "+listenerId);
+		logger.log("UbiMqtt::updatePublicKey() updated public key for topic: "+topic+" and listenerId: "+listenerId);
 		}
 	};
 

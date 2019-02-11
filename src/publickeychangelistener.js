@@ -2,6 +2,9 @@
 function PublicKeyChangeListener(ubiMqtt, mainTopic, mainObj, mainListener, originalCallback_)
 {
 var self = this;
+
+var logger = console;
+
 var originalCallback = originalCallback_;
 var mainListenerId = null;
 
@@ -9,7 +12,7 @@ self.onPublicKeyChanged = function(publicKeyTopic, message, listenerId)
 	{
 	if (mainListenerId)
  		{
-		console.log("PublicKeyChangeListener::onPublicKeyChanged() changing public key");
+		logger.log("PublicKeyChangeListener::onPublicKeyChanged() changing public key");
 		ubiMqtt.updatePublicKey(mainTopic, mainListenerId, message);
 		}
 	else
