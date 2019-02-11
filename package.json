@@ -1,6 +1,6 @@
 {
   "name": "ubimqtt",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A mqtt convenience library for accessing the Ubikampus mqtt bus",
   "main": "index.js",
   "scripts": {
@@ -18,8 +18,11 @@
     "jsdoc": "^3.5.5",
     "jsdoc-to-markdown": "^4.0.1"
   },
-"publishConfig":
-	{
+	"publishConfig": {
   "access": "public"
+	},
+	"repository": {
+  "type" : "git",
+  "url" : "https://github.com/ubikampus/ubimqtt"
 	}
 }
