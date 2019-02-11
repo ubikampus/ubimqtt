@@ -1,1 +1,1 @@
-exports = require("./src/ubimqtt.js");
+module.exports = require("./src/ubimqtt");
