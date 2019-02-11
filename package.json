@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node_modules/jasmine/bin/jasmine.js",
-    "jsdoc": "jsdoc -d ./apidocs ./src/ubimqtt.js"
+    "jsdoc": "jsdoc2md --template README.hbs --files ./src/ubimqtt.js >README.md"
   },
   "author": "Petri Savolainen",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "node-jose": "^1.1.1"
   },
   "devDependencies": {
-    "jsdoc": "^3.5.5"
+    "jsdoc": "^3.5.5",
+    "jsdoc-to-markdown": "^4.0.1"
   }
 }
