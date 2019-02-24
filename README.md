@@ -5,7 +5,7 @@ signed content on Mqtt (ES512 signatures only!), subscribing to content signed b
 subscribing to content signed by a known publisher whose public key can be found
 on the Mqtt bus itself.
 
-The signature format is JWS JSON, but the payload is unisually publised on Mqtt in the format output by
+The signature format is JWS JSON, but the payload is unconventionally publised on Mqtt in the format output by
 JSON.stringify() without Base64 encoding to keep string payloads human-readable on-the-wire.
 
 Install using npm
