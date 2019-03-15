@@ -17,6 +17,7 @@ var listenerCounter = 0;
 
 var mqtt = require("mqtt");
 var jose = require("node-jose");
+var crypto = require("crypto");
 
 var PublicKeyChangeListener = require("./publickeychangelistener")
 
@@ -25,6 +26,19 @@ var client  = null;
 // {topic: { {listenerId: a, listener: xx, obj: yy, publicKey:zz }, ..} }
 var subscriptions = new Object();
 var publicKeyChangeListeners = new Array();
+
+var generateRandomString = function(length)
+	{
+	var base = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
+	var bytes = crypto.randomBytes(length);
+
+	var ret = "";
+	for (var i = 0; i < bytes.length; i++)
+		{
+		ret += base[bytes[i]%base.length];
+		};
+	return ret;
+	};
 
 var handleIncomingMessage = function(topic, message)
 	{
@@ -45,13 +59,14 @@ var handleIncomingMessage = function(topic, message)
 				}
 			catch (e)
 				{
-				logger.log("UbiMqtt::handleIncomingMessage() Message was not in JSON format");
+				logger.log("UbiMqtt::handleIncomingMessage() Message was not in JSON format in topic " + topic + " where JWS signed messages are expected");
+				logger.log(e);
 				continue;
 				}
 			logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end: "+message);
 
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
-
+			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(parsedMessage.signatures[0].protected , "utf8");
 
 			jose.JWK.asKey(subscriptions[topic][i].publicKey, "pem")
 			.then(function(key)
@@ -163,7 +178,7 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 		jose.JWK.asKey(privateKey, "pem")
 		.then(function(key)
 			{
-			jose.JWS.createSign(key)
+			jose.JWS.createSign({fields: { timestamp: Date.now(), nonce: generateRandomString(12) }}, key)
 			.update(message)
 			.final()
 			.then(function(result)
@@ -171,7 +186,11 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 				// {result} is a JSON object -- JWS using the JSON General Serialization
 				// make the payload human-readable
 				result.payload = jose.util.base64url.decode(result.payload).toString();
-				
+
+				// make the headers humand-readable
+
+				result.signatures[0].protected = jose.util.base64url.decode(result.signatures[0].protected).toString();
+
 				self.publish(topic, JSON.stringify(result), opts, callback);
 				});
       });
