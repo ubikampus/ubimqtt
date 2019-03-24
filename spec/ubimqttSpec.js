@@ -97,7 +97,7 @@ describe("UbiMqtt", function()
 					done();
 					});
 				};
-			mqtt.subscribeSigned("test/test", publicKey, this, onMessage, function(err)
+			mqtt.subscribeSigned("test/test", [publicKey], this, onMessage, function(err)
 				{
 				expect(err).toBeFalsy();
 				mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
@@ -120,33 +120,33 @@ describe("UbiMqtt", function()
 			expect(error).toBeFalsy();
 
 			//publish the public key for the "known publisher"
-			mqtt.publish("publishers/testpublisher/publicKey", publicKey, {retain: true}, function(err)
+			mqtt.publish("publishers/testpublisher/publicKey", publicKey, {retain: true, qos: 1}, function(err)
 				{
 				expect(err).toBeFalsy();
-				});
-
-			var onMessage = function(topic, message)
-				{
-				logger.log("Jsmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
-				//clear the public key for the "known publisher"
-				mqtt.publish("publishers/testpublisher/publicKey", "", {retain: true}, function(err)
+				var onMessage = function(topic, message)
 					{
-					expect(err).toBeFalsy();
-					mqtt.disconnect(function(err)
+					logger.log("Jsmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+					//clear the public key for the "known publisher"
+					mqtt.publish("publishers/testpublisher/publicKey", "", {retain: true, qos:1}, function(err)
 						{
 						expect(err).toBeFalsy();
-						done();
+						mqtt.disconnect(function(err)
+							{
+							expect(err).toBeFalsy();
+							done();
+							});
 						});
-					});
-				};
+					};
 
-			mqtt.subscribeFromPublisher("test/test", "testpublisher", this, onMessage, function(err)
-				{
-				expect(err).toBeFalsy();
-				console.log("PRIVATE KEY WHEN PUBLISHING SIGNED: "+privateKey);
-				mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
+				mqtt.subscribeFromPublisher("test/test", "testpublisher", this, onMessage, function(err)
 					{
 					expect(err).toBeFalsy();
+
+					console.log("PRIVATE KEY WHEN PUBLISHING SIGNED: "+privateKey);
+					mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
+						{
+						expect(err).toBeFalsy();
+						});
 					});
 				});
 			});
@@ -171,7 +171,7 @@ describe("UbiMqtt", function()
 
 			var onMessage = function(topic, message)
 				{
-				logger.log("Jsmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+				logger.log("Jasmine:: message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
 				//clear the public key for the "known publisher"
 				mqtt.publish("publishers/testpublisher/publicKey", "", {retain: true}, function(err)
 					{
@@ -192,7 +192,7 @@ describe("UbiMqtt", function()
 				mqtt.publish("publishers/testpublisher/publicKey", publicKey, {retain: true}, function(err)
 					{
 					expect(err).toBeFalsy();
-					
+
 					mqtt.publishSigned("test/test", "viestijee", null, privateKey, function(err)
 						{
 						expect(err).toBeFalsy();

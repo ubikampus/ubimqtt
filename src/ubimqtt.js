@@ -40,6 +40,30 @@ var generateRandomString = function(length)
 	return ret;
 	};
 
+var verifyWithKeys = function(parsedMessage, keys, index, callback)
+	{
+	jose.JWK.asKey(keys[index], "pem")
+	.then(function(key)
+		{
+		var opts = {algorithms: ["ES512"]};
+		jose.JWS.createVerify(key, opts)
+		.verify(parsedMessage)
+		.then(function(result)
+			{
+			logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
+			callback(null, result.payload);
+			})
+		.catch(function(reason)
+			{
+			logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
+			if (index >= keys.length)
+				return callback("Verification failed");
+			else
+				return verifyWithKeys(parsedMessage, keys, index+1, callback);
+			});
+		});
+	};
+
 var handleIncomingMessage = function(topic, message)
 	{
 	if (!subscriptions.hasOwnProperty(topic))
@@ -47,11 +71,11 @@ var handleIncomingMessage = function(topic, message)
 
 	for (let i in subscriptions[topic])
 		{
-		if (subscriptions[topic][i].publicKey)
+		if (subscriptions[topic][i].publicKeys)
 			{
 			// This topic was subscribed with subscribeSigned
 			// We shall discard all messages that are not signed with the
-			// correct public key
+			// correct public keys
 			var parsedMessage = null;
 			try
 				{
@@ -66,24 +90,39 @@ var handleIncomingMessage = function(topic, message)
 			logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end: "+message);
 
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
-			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(parsedMessage.signatures[0].protected , "utf8");
+			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(JSON.stringify(parsedMessage.signatures[0].protected) , "utf8");
 
-			jose.JWK.asKey(subscriptions[topic][i].publicKey, "pem")
-			.then(function(key)
+			var keys = subscriptions[topic][i].publicKeys;
+
+			logger.log("keys:" + JSON.stringify(keys));
+
+			verifyWithKeys(parsedMessage, keys, 0, function(err, decodedPayload)
 				{
-				var opts = {algorithms: ["ES512"]};
-				jose.JWS.createVerify(key, opts)
-				.verify(parsedMessage)
-				.then(function(result)
-					{
-          logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
-					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload, i);
-					})
-				.catch(function(reason)
-					{
-					logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
-					});
+				if (!err)
+					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, decodedPayload, i);
 				});
+
+			/*
+			for (let j=0; j<keys.length; j++)
+				{
+				jose.JWK.asKey(keys[j], "pem")
+				.then(function(key)
+					{
+					var opts = {algorithms: ["ES512"]};
+					jose.JWS.createVerify(key, opts)
+					.verify(parsedMessage)
+					.then(function(result)
+						{
+          	logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
+						subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload, i);
+						})
+					.catch(function(reason)
+						{
+						logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
+						});
+					});
+				}
+			*/
 			}
 		else
 			subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, message, i);
@@ -178,7 +217,7 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 		jose.JWK.asKey(privateKey, "pem")
 		.then(function(key)
 			{
-			jose.JWS.createSign({fields: { timestamp: Date.now(), nonce: generateRandomString(12) }}, key)
+			jose.JWS.createSign({fields: { timestamp: Date.now(), messageid: generateRandomString(12) }}, key)
 			.update(message)
 			.final()
 			.then(function(result)
@@ -189,7 +228,7 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 
 				// make the headers humand-readable
 
-				result.signatures[0].protected = jose.util.base64url.decode(result.signatures[0].protected).toString();
+				result.signatures[0].protected = JSON.parse(jose.util.base64url.decode(result.signatures[0].protected).toString());
 
 				self.publish(topic, JSON.stringify(result), opts, callback);
 				});
@@ -213,7 +252,7 @@ self.subscribe = function(topic, obj, listener, callback)
 	if (!subscriptions.hasOwnProperty(topic))
 		subscriptions[topic] = new Object();
 
-	listenerId = listenerCounter+"";
+	var listenerId = listenerCounter+"";
 	listenerCounter++;
 
 	subscriptions[topic][listenerId] = {listener: listener, obj: obj};
@@ -230,13 +269,13 @@ self.subscribe = function(topic, obj, listener, callback)
 * @function subscribeSigned
 * @memberOf UbiMqtt#
 * @param {string} topic the Mqtt topic to subscribe to
-* @param {string} publicKey the public key of the keypair the messages need to to be signed with. Only messages signed with this keypair will invoke the listener
+* @param {string[]} publicKeys the public keys of the keypairs the messages need to to be signed with. Only messages signed with these keypairs will invoke the listener
 * @param {any} obj the value of "this" to be used whan calling the listener
 * @param {function} listener the listener function to call whenever a message matching the topic and signed with the publicKey arrives
 * @param {function} callback the callback to be called upon successful subscription or error
 */
 
-self.subscribeSigned = function(topic, publicKey, obj, listener, callback)
+self.subscribeSigned = function(topic, publicKeys, obj, listener, callback)
 	{
 	//if publicKey is given, only let events with correct public key through
 	if (!subscriptions.hasOwnProperty(topic))
@@ -245,7 +284,7 @@ self.subscribeSigned = function(topic, publicKey, obj, listener, callback)
 	listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj, publicKey: publicKey};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, publicKeys: publicKeys};
 
 	client.subscribe(topic, null, function(err)
 		{
@@ -253,12 +292,12 @@ self.subscribeSigned = function(topic, publicKey, obj, listener, callback)
 		});
 	};
 
-self.updatePublicKey = function(topic, listenerId, key)
+self.updatePublicKeys = function(topic, listenerId, keys)
 	{
 	if (subscriptions.hasOwnProperty(topic) && subscriptions[topic].hasOwnProperty(listenerId))
 		{
-		subscriptions[topic][listenerId].publicKey = key;
-		logger.log("UbiMqtt::updatePublicKey() updated public key for topic: "+topic+" and listenerId: "+listenerId);
+		subscriptions[topic][listenerId].publicKeys = keys;
+		logger.log("UbiMqtt::updatePublicKeys() updated public keys for topic: "+topic+" and listenerId: "+listenerId);
 		}
 	};
 

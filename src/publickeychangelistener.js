@@ -13,12 +13,13 @@ self.onPublicKeyChanged = function(publicKeyTopic, message, listenerId)
 	if (mainListenerId)
  		{
 		logger.log("PublicKeyChangeListener::onPublicKeyChanged() changing public key");
-		ubiMqtt.updatePublicKey(mainTopic, mainListenerId, message);
+		ubiMqtt.updatePublicKeys(mainTopic, mainListenerId, [message]);
 		}
 	else
 		{
 		// This is the first time the public key arrives, subscribe to the main topic
-		ubiMqtt.subscribeSigned(mainTopic, message, mainObj, mainListener, function(err, listenerId)
+		//logger.log("Public key arrived from known publisher: "+ message);
+		ubiMqtt.subscribeSigned(mainTopic, [message], mainObj, mainListener, function(err, listenerId)
 			{
 			mainListenerId = listenerId;
 			if (originalCallback)

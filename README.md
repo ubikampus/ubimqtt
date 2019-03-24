@@ -90,7 +90,7 @@ Api documentation
     * [.publish(topic, message, opts, callback)](#UbiMqtt+publish)
     * [.publishSigned(topic, message, opts, privateKey, callback)](#UbiMqtt+publishSigned)
     * [.subscribe(topic, obj, listener, callback)](#UbiMqtt+subscribe)
-    * [.subscribeSigned(topic, publicKey, obj, listener, callback)](#UbiMqtt+subscribeSigned)
+    * [.subscribeSigned(topic, publicKeys, obj, listener, callback)](#UbiMqtt+subscribeSigned)
     * [.subscribeFromPublisher(topic, publiserName, obj, listener, callback)](#UbiMqtt+subscribeFromPublisher)
 
 <a name="new_UbiMqtt_new"></a>
@@ -170,7 +170,7 @@ Subscribes to a Mqtt topic on the connected Mqtt server
 
 <a name="UbiMqtt+subscribeSigned"></a>
 
-### ubiMqtt.subscribeSigned(topic, publicKey, obj, listener, callback)
+### ubiMqtt.subscribeSigned(topic, publicKeys, obj, listener, callback)
 Subscribes to messages signed by particular keypair on a Mqtt topic on the connected Mqtt server
 
 **Kind**: instance method of [<code>UbiMqtt</code>](#UbiMqtt)  
@@ -178,7 +178,7 @@ Subscribes to messages signed by particular keypair on a Mqtt topic on the conne
 | Param | Type | Description |
 | --- | --- | --- |
 | topic | <code>string</code> | the Mqtt topic to subscribe to |
-| publicKey | <code>string</code> | the public key of the keypair the messages need to to be signed with. Only messages signed with this keypair will invoke the listener |
+| publicKeys | <code>Array.&lt;string&gt;</code> | the public keys of the keypairs the messages need to to be signed with. Only messages signed with these keypairs will invoke the listener |
 | obj | <code>any</code> | the value of "this" to be used whan calling the listener |
 | listener | <code>function</code> | the listener function to call whenever a message matching the topic and signed with the publicKey arrives |
 | callback | <code>function</code> | the callback to be called upon successful subscription or error |
