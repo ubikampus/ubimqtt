@@ -1,6 +1,6 @@
 {
   "name": "ubimqtt",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A mqtt convenience library for accessing the Ubikampus mqtt bus",
   "main": "index.js",
   "scripts": {
@@ -12,17 +12,18 @@
   "dependencies": {
     "jasmine": "^3.3.1",
     "mqtt": "^2.18.8",
+    "mqtt-wildcard": "^3.0.9",
     "node-jose": "^1.1.1"
   },
   "devDependencies": {
     "jsdoc": "^3.5.5",
     "jsdoc-to-markdown": "^4.0.1"
   },
-	"publishConfig": {
-  "access": "public"
-	},
-	"repository": {
-  "type" : "git",
-  "url" : "https://github.com/ubikampus/ubimqtt"
-	}
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ubikampus/ubimqtt"
+  }
 }

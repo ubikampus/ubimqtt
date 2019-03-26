@@ -18,6 +18,7 @@ var listenerCounter = 0;
 var mqtt = require("mqtt");
 var jose = require("node-jose");
 var crypto = require("crypto");
+var mqttWildcard = require('mqtt-wildcard');
 
 var PublicKeyChangeListener = require("./publickeychangelistener")
 
@@ -64,16 +65,38 @@ var verifyWithKeys = function(parsedMessage, keys, index, callback)
 		});
 	};
 
+var getSubscriptionsForTopic = function(topic)
+	{
+	var ret = new Array();
+
+	var keys = Object.keys(subscriptions);
+
+	for (let i = 0; i < keys.length; i++)
+		{
+		if (mqttWildcard(topic, keys[i]))
+			{
+			//console.log("Mqtt wildcard matches, subscriptions is: "+JSON.stringify(subscriptions));
+
+			for (var j in subscriptions[keys[i]])
+				{
+				console.log("adding subscription to ret");
+				ret.push(subscriptions[keys[i]][j]);
+
+				}
+			}
+		}
+
+	return ret;
+	};
+
 var handleIncomingMessage = function(topic, message)
 	{
 	logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end. topic: "+topic +" message: "+message);
 
-	if (!subscriptions.hasOwnProperty(topic))
-		return;
-
-	for (let i in subscriptions[topic])
+	var subscriptionsForTopic = getSubscriptionsForTopic(topic);
+	for (let i = 0; i < subscriptionsForTopic.length; i++)
 		{
-		if (subscriptions[topic][i].publicKeys)
+		if (subscriptionsForTopic[i].publicKeys)
 			{
 			// This topic was subscribed with subscribeSigned
 			// We shall discard all messages that are not signed with the
@@ -94,14 +117,14 @@ var handleIncomingMessage = function(topic, message)
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
 			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(JSON.stringify(parsedMessage.signatures[0].protected) , "utf8");
 
-			var keys = subscriptions[topic][i].publicKeys;
+			var keys = subscriptionsForTopic[i].publicKeys;
 
 			logger.log("keys:" + JSON.stringify(keys));
 
 			verifyWithKeys(parsedMessage, keys, 0, function(err, decodedPayload)
 				{
 				if (!err)
-					subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, decodedPayload, i);
+					subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, decodedPayload, i);
 				});
 
 			/*
@@ -127,7 +150,7 @@ var handleIncomingMessage = function(topic, message)
 			*/
 			}
 		else
-			subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, message, i);
+			subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, message, i);
 		}
 	};
 
