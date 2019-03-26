@@ -66,6 +66,8 @@ var verifyWithKeys = function(parsedMessage, keys, index, callback)
 
 var handleIncomingMessage = function(topic, message)
 	{
+	logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end. topic: "+topic +" message: "+message);
+
 	if (!subscriptions.hasOwnProperty(topic))
 		return;
 
@@ -87,7 +89,7 @@ var handleIncomingMessage = function(topic, message)
 				logger.log(e);
 				continue;
 				}
-			logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end: "+message);
+
 
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
 			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(JSON.stringify(parsedMessage.signatures[0].protected) , "utf8");
