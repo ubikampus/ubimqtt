@@ -79,7 +79,7 @@ var getSubscriptionsForTopic = function(topic)
 
 			for (var j in subscriptions[keys[i]])
 				{
-				console.log("adding subscription to ret");
+				//console.log("adding subscription to ret");
 				ret.push(subscriptions[keys[i]][j]);
 
 				}
@@ -124,33 +124,11 @@ var handleIncomingMessage = function(topic, message)
 			verifyWithKeys(parsedMessage, keys, 0, function(err, decodedPayload)
 				{
 				if (!err)
-					subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, decodedPayload, i);
+					subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, decodedPayload, subscriptionsForTopic[i].id);
 				});
-
-			/*
-			for (let j=0; j<keys.length; j++)
-				{
-				jose.JWK.asKey(keys[j], "pem")
-				.then(function(key)
-					{
-					var opts = {algorithms: ["ES512"]};
-					jose.JWS.createVerify(key, opts)
-					.verify(parsedMessage)
-					.then(function(result)
-						{
-          	logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
-						subscriptions[topic][i].listener.call(subscriptions[topic][i].obj, topic, result.payload, i);
-						})
-					.catch(function(reason)
-						{
-						logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
-						});
-					});
-				}
-			*/
 			}
 		else
-			subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, message, i);
+			subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, message, subscriptionsForTopic[i].id);
 		}
 	};
 
@@ -280,7 +258,7 @@ self.subscribe = function(topic, obj, listener, callback)
 	var listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId};
 
 	client.subscribe(topic, null, function(err)
 		{
@@ -309,7 +287,7 @@ self.subscribeSigned = function(topic, publicKeys, obj, listener, callback)
 	listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj, publicKeys: publicKeys};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, publicKeys: publicKeys};
 
 	client.subscribe(topic, null, function(err)
 		{

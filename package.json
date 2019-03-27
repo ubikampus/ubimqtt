@@ -1,6 +1,6 @@
 {
   "name": "ubimqtt",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "A mqtt convenience library for accessing the Ubikampus mqtt bus",
   "main": "index.js",
   "scripts": {
