@@ -87,6 +87,7 @@ Api documentation
     * [new UbiMqtt(serverAddress)](#new_UbiMqtt_new)
     * [.connect(callback)](#UbiMqtt+connect)
     * [.disconnect(callback)](#UbiMqtt+disconnect)
+    * [.forceDisconnect(callback)](#UbiMqtt+forceDisconnect)
     * [.publish(topic, message, opts, callback)](#UbiMqtt+publish)
     * [.publishSigned(topic, message, opts, privateKey, callback)](#UbiMqtt+publishSigned)
     * [.subscribe(topic, obj, listener, callback)](#UbiMqtt+subscribe)
@@ -124,6 +125,18 @@ Disconnects from the Mqtt server
 | Param | Type | Description |
 | --- | --- | --- |
 | callback | <code>function</code> | the callback to call upon successful disconnection or error |
+
+<a name="UbiMqtt+forceDisconnect"></a>
+
+### ubiMqtt.forceDisconnect(callback)
+Immediately disconnect without waiting for ACKs. If called before bus
+connection is established, connection is canceled.
+
+**Kind**: instance method of [<code>UbiMqtt</code>](#UbiMqtt)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| callback | <code>function</code> | called when disconnect succeeds |
 
 <a name="UbiMqtt+publish"></a>
 

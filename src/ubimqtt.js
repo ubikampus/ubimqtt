@@ -177,15 +177,14 @@ var handleIncomingMessage = function(topic, message)
 
 self.connect = function(callback)
 	{
-	let tempClient = mqtt.connect(serverAddress);
-
-	tempClient.on("connect", function()
+	client = mqtt.connect(serverAddress);
+	client.on("connect", function()
 		{
-		client = tempClient;
-  	callback(null);
-    });
+		// client = tempClient;
+		callback(null);
+		});
 
-	tempClient.on("message", function (topic, message)
+	client.on("message", function (topic, message)
 		{
 		handleIncomingMessage(topic, message.toString());
 		});
@@ -224,6 +223,19 @@ self.disconnect = function(callback)
 		callback("Error: trying to disconnect non-connected client");
 		}
 	};
+
+/**
+ * Immediately disconnect without waiting for ACKs. If called before bus
+ * connection is established, connection is canceled.
+ *
+ * @function forceDisconnect
+ * @memberOf UbiMqtt#
+ * @param {function} callback called when disconnect succeeds
+ */
+self.forceDisconnect = function(callback)
+	{
+	client.end(true, callback);
+	}
 
 /**
 * Publishes a message on the connected Mqtt server
