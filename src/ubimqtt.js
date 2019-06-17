@@ -154,6 +154,16 @@ self.connect = function(callback)
 		{
 		handleIncomingMessage(topic, message.toString());
 		});
+
+	tempClient.on("offline", function()
+		{
+		callback(new Error("connection to the server was closed"));
+		});
+	
+	tempClient.on("error", function(error) 
+		{
+		callback(error);
+		});
 	};
 
 /**
