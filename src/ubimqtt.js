@@ -3,13 +3,21 @@
 *
 * @constructor
 * @param {string} serverAddress the Mqtt server to cennect to
+* @param {object} [options]
+* @param {boolean} [options.silent] do not print logs
 */
 
-function UbiMqtt(serverAddress)
+function UbiMqtt(serverAddress, options)
 {
 var self = this;
 
-var logger = console;
+var debug = function(message)
+	{
+		if (!options || !options.silent)
+			{
+				console.log(message)
+			}
+	}
 
 const PUBLISHERS_PREFIX = "publishers/";
 
@@ -18,7 +26,7 @@ var listenerCounter = 0;
 var mqtt = require("mqtt");
 var jose = require("node-jose");
 var crypto = require("crypto");
-var mqttWildcard = require('mqtt-wildcard');
+var mqttWildcard = require("mqtt-wildcard");
 
 var PublicKeyChangeListener = require("./publickeychangelistener")
 
@@ -51,12 +59,12 @@ var verifyWithKeys = function(parsedMessage, keys, index, callback)
 		.verify(parsedMessage)
 		.then(function(result)
 			{
-			logger.log("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
+			debug("UbiMqtt::handleIncomingMessage() Signature verification succeeded");
 			callback(null, result.payload);
 			})
 		.catch(function(reason)
 			{
-			logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
+			debug("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
 			if (index >= keys.length)
 				return callback("Verification failed");
 			else
@@ -65,25 +73,25 @@ var verifyWithKeys = function(parsedMessage, keys, index, callback)
 		});
 	};
 
-let decryptWithKeys = function(message, keys, callback) 
+let decryptWithKeys = function(message, keys, callback)
 	{
 	let opts = { algorithms: ["ECDH-ES", "A128CBC-HS256"] };
 
-	for (let key of keys) 
+	for (let key of keys)
 		{
 		jose.JWK.asKey(key, "pem")
-		.then(function(key) 
+		.then(function(key)
 			{
 			jose.JWE.createDecrypt(key, opts)
 			.decrypt(message)
-			.then(function(result) 
+			.then(function(result)
 				{
-				logger.log("UbiMqtt::handleIncomingMessage() Decryption succeeded");
+				debug("UbiMqtt::handleIncomingMessage() Decryption succeeded");
 				return callback(null, result.payload.toString());
 				})
-			.catch(function(reason) 
+			.catch(function(reason)
 				{
-				logger.log("UbiMqtt::handleIncomingMessage() Decryption failed: "+reason);
+				debug("UbiMqtt::handleIncomingMessage() Decryption failed: "+reason);
 				});
 			});
 		}
@@ -116,7 +124,7 @@ var getSubscriptionsForTopic = function(topic)
 
 var handleIncomingMessage = function(topic, message)
 	{
-	logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end. topic: "+topic +" message: "+message);
+	debug("UbiMqtt::handleIncomingMessage() Raw message at receiving end. topic: "+topic +" message: "+message);
 
 	var subscriptionsForTopic = getSubscriptionsForTopic(topic);
 	for (let subscription of subscriptionsForTopic)
@@ -133,8 +141,8 @@ var handleIncomingMessage = function(topic, message)
 				}
 			catch (e)
 				{
-				logger.log("UbiMqtt::handleIncomingMessage() Message was not in JSON format in topic " + topic + " where JWS signed messages are expected");
-				logger.log(e);
+				debug("UbiMqtt::handleIncomingMessage() Message was not in JSON format in topic " + topic + " where JWS signed messages are expected");
+				debug(e);
 				continue;
 				}
 
@@ -143,7 +151,7 @@ var handleIncomingMessage = function(topic, message)
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
 			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(JSON.stringify(parsedMessage.signatures[0].protected) , "utf8");
 
-			logger.log("keys:" + JSON.stringify(keys));
+			debug("keys:" + JSON.stringify(keys));
 
 			verifyWithKeys(parsedMessage, keys, 0, function(err, decodedPayload)
 				{
@@ -154,9 +162,9 @@ var handleIncomingMessage = function(topic, message)
 		else if (subscription.privateKeys)
 			{
 			let keys = subscription.privateKeys;
-			decryptWithKeys(message, keys, function(err, decryptedPayload) 
+			decryptWithKeys(message, keys, function(err, decryptedPayload)
 				{
-				if (!err) 
+				if (!err)
 					{
 					subscription.listener.call(subscription.obj, topic, decryptedPayload, subscriptions.id);
 					}
@@ -180,7 +188,6 @@ self.connect = function(callback)
 	client = mqtt.connect(serverAddress);
 	client.on("connect", function()
 		{
-		// client = tempClient;
 		callback(null);
 		});
 
@@ -189,12 +196,12 @@ self.connect = function(callback)
 		handleIncomingMessage(topic, message.toString());
 		});
 
-	tempClient.on("offline", function()
+	client.on("offline", function()
 		{
 		callback(new Error("connection to the server was closed"));
 		});
-	
-	tempClient.on("error", function(error) 
+
+	client.on("error", function(error)
 		{
 		callback(error);
 		});
@@ -294,7 +301,7 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 				});
       });
 		};
-	
+
 self.publishEncrypted = function(topic, message, opts, publicKey, callback)
 		{
 		jose.JWK.asKey(publicKey, "pem")
@@ -389,7 +396,7 @@ self.updatePublicKeys = function(topic, listenerId, keys)
 	if (subscriptions.hasOwnProperty(topic) && subscriptions[topic].hasOwnProperty(listenerId))
 		{
 		subscriptions[topic][listenerId].publicKeys = keys;
-		logger.log("UbiMqtt::updatePublicKeys() updated public keys for topic: "+topic+" and listenerId: "+listenerId);
+		debug("UbiMqtt::updatePublicKeys() updated public keys for topic: "+topic+" and listenerId: "+listenerId);
 		}
 	};
 
