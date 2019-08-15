@@ -65,6 +65,31 @@ var verifyWithKeys = function(parsedMessage, keys, index, callback)
 		});
 	};
 
+let decryptWithKeys = function(message, keys, callback) 
+	{
+	let opts = { algorithms: ["ECDH-ES", "A128CBC-HS256"] };
+
+	for (let key of keys) 
+		{
+		jose.JWK.asKey(key, "pem")
+		.then(function(key) 
+			{
+			jose.JWE.createDecrypt(key, opts)
+			.decrypt(message)
+			.then(function(result) 
+				{
+				logger.log("UbiMqtt::handleIncomingMessage() Decryption succeeded");
+				return callback(null, result.payload.toString());
+				})
+			.catch(function(reason) 
+				{
+				logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
+				});
+			});
+		}
+	return callback("Decryption failed");
+}
+
 var getSubscriptionsForTopic = function(topic)
 	{
 	var ret = new Array();
@@ -94,9 +119,9 @@ var handleIncomingMessage = function(topic, message)
 	logger.log("UbiMqtt::handleIncomingMessage() Raw message at receiving end. topic: "+topic +" message: "+message);
 
 	var subscriptionsForTopic = getSubscriptionsForTopic(topic);
-	for (let i = 0; i < subscriptionsForTopic.length; i++)
+	for (let subscription of subscriptionsForTopic)
 		{
-		if (subscriptionsForTopic[i].publicKeys)
+		if (subscription.publicKeys)
 			{
 			// This topic was subscribed with subscribeSigned
 			// We shall discard all messages that are not signed with the
@@ -113,22 +138,32 @@ var handleIncomingMessage = function(topic, message)
 				continue;
 				}
 
+			let keys = subscription.publicKeys;
 
 			parsedMessage.payload =  jose.util.base64url.encode(parsedMessage.payload , "utf8");
 			parsedMessage.signatures[0].protected =  jose.util.base64url.encode(JSON.stringify(parsedMessage.signatures[0].protected) , "utf8");
-
-			var keys = subscriptionsForTopic[i].publicKeys;
 
 			logger.log("keys:" + JSON.stringify(keys));
 
 			verifyWithKeys(parsedMessage, keys, 0, function(err, decodedPayload)
 				{
 				if (!err)
-					subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, decodedPayload, subscriptionsForTopic[i].id);
+					subscription.listener.call(subscription.obj, topic, decodedPayload, subscription.id);
+				});
+			}
+		else if (subscription.privateKeys)
+			{
+			let keys = subscription.privateKeys;
+			decryptWithKeys(JSON.parse(message), keys, function(err, decryptedPayload) 
+				{
+				if (!err) 
+					{
+					subscription.listener.call(subscription.obj, topic, decryptedPayload, subscriptions.id);
+					}
 				});
 			}
 		else
-			subscriptionsForTopic[i].listener.call(subscriptionsForTopic[i].obj, topic, message, subscriptionsForTopic[i].id);
+			subscription.listener.call(subscription.obj, topic, message, subscription.id);
 		}
 	};
 
@@ -247,6 +282,21 @@ self.publishSigned = function(topic, message, opts, privateKey, callback)
 				});
       });
 		};
+	
+self.publishEncrypted = function(topic, message, opts, publicKey, callback)
+		{
+		jose.JWK.asKey(publicKey, "pem")
+		.then(function(key)
+			{
+			jose.JWE.createEncrypt({ fields: { timestamp: Date.now(), messageid: generateRandomString(12) }}, key)
+			.update(message)
+			.final()
+			.then(function(result)
+				{
+				self.publish(topic, JSON.stringify(result), opts, callback);
+				});
+			});
+		}
 
 /**
 * Subscribes to a Mqtt topic on the connected Mqtt server
@@ -297,7 +347,24 @@ self.subscribeSigned = function(topic, publicKeys, obj, listener, callback)
 	listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, publicKeys: publicKeys};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, publicKeys: publicKeys, encrypted: false};
+
+	client.subscribe(topic, null, function(err)
+		{
+		callback(err, listenerId);
+		});
+	};
+
+self.subscribeEncrypted = function(topic, privateKeys, obj, listener, callback)
+	{
+	//if publicKey is given, only let events with correct public key through
+	if (!subscriptions.hasOwnProperty(topic))
+		subscriptions[topic] = new Object();
+
+	listenerId = listenerCounter+"";
+	listenerCounter++;
+
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, privateKeys: privateKeys, encrypted: true};
 
 	client.subscribe(topic, null, function(err)
 		{
