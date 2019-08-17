@@ -83,7 +83,7 @@ let decryptWithKeys = function(message, keys, callback)
 				})
 			.catch(function(reason) 
 				{
-				logger.log("UbiMqtt::handleIncomingMessage() Signature verification failed: "+reason);
+				logger.log("UbiMqtt::handleIncomingMessage() Decryption failed: "+reason);
 				});
 			});
 		}
@@ -154,7 +154,7 @@ var handleIncomingMessage = function(topic, message)
 		else if (subscription.privateKeys)
 			{
 			let keys = subscription.privateKeys;
-			decryptWithKeys(JSON.parse(message), keys, function(err, decryptedPayload) 
+			decryptWithKeys(message, keys, function(err, decryptedPayload) 
 				{
 				if (!err) 
 					{
@@ -288,12 +288,12 @@ self.publishEncrypted = function(topic, message, opts, publicKey, callback)
 		jose.JWK.asKey(publicKey, "pem")
 		.then(function(key)
 			{
-			jose.JWE.createEncrypt({ fields: { timestamp: Date.now(), messageid: generateRandomString(12) }}, key)
+			jose.JWE.createEncrypt({ format: "compact", fields: { timestamp: Date.now(), messageid: generateRandomString(12) }}, key)
 			.update(message)
 			.final()
 			.then(function(result)
 				{
-				self.publish(topic, JSON.stringify(result), opts, callback);
+				self.publish(topic, result, opts, callback);
 				});
 			});
 		}
@@ -347,7 +347,7 @@ self.subscribeSigned = function(topic, publicKeys, obj, listener, callback)
 	listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, publicKeys: publicKeys, encrypted: false};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, publicKeys: publicKeys};
 
 	client.subscribe(topic, null, function(err)
 		{
@@ -364,7 +364,7 @@ self.subscribeEncrypted = function(topic, privateKeys, obj, listener, callback)
 	listenerId = listenerCounter+"";
 	listenerCounter++;
 
-	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, privateKeys: privateKeys, encrypted: true};
+	subscriptions[topic][listenerId] = {listener: listener, obj: obj, id: listenerId, privateKeys: privateKeys};
 
 	client.subscribe(topic, null, function(err)
 		{
