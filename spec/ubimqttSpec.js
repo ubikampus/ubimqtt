@@ -201,4 +201,35 @@ describe("UbiMqtt", function()
 				});
 			});
 		});
+
+		it("subscribes, publishes an encrypted message, and decrypts that message", function(done)
+			{
+			const homedir = require('os').homedir();
+			var privateKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key.pem");
+			var publicKey= fs.readFileSync(homedir+"/.private/ubimqtt-testing-key-public.pem");
+			var mqtt = new UbiMqtt("mqtt://localhost:1883");
+	
+			mqtt.connect(function(error)
+				{
+				expect(error).toBeFalsy();
+	
+				var onMessage = function(topic, message)
+					{
+					logger.log("message received from mqtt server: {topic: \""+topic+"\",message: \""+message+"\"}");
+					mqtt.disconnect(function(err)
+						{
+						expect(err).toBeFalsy();
+						done();
+						});
+					};
+				mqtt.subscribeEncrypted("test/test", [privateKey], this, onMessage, function(err)
+					{
+					expect(err).toBeFalsy();
+					mqtt.publishEncrypted("test/test", "viestijee", null, publicKey, function(err)
+						{
+						expect(err).toBeFalsy();
+						});
+					});
+				});
+			});
 	});
