@@ -13,7 +13,7 @@
     "jasmine": "^3.3.1",
     "mqtt": "^2.18.8",
     "mqtt-wildcard": "^3.0.9",
-    "node-jose": "^1.1.1"
+    "node-jose": "^2.0.0"
   },
   "devDependencies": {
     "jsdoc": "^3.6.3",
